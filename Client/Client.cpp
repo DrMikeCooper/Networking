@@ -37,6 +37,9 @@ bool Client::startup() {
 
 	handleNetworkConnection();
 
+	m_myGameObject.position = glm::vec3(0, 0, 0);
+	m_myGameObject.colour = glm::vec4(1, 0, 0, 1);
+
 	return true;
 }
 
@@ -61,6 +64,20 @@ void Client::update(float deltaTime) {
 		quit();
 
 	handleNetworkMessages();
+
+	// move our gameobject
+	if (input->isKeyDown(aie::INPUT_KEY_LEFT))
+	{
+		m_myGameObject.position.x -= 10.0f * deltaTime;
+	}
+	if (input->isKeyDown(aie::INPUT_KEY_RIGHT))
+	{
+		m_myGameObject.position.x += 10.0f * deltaTime;
+	}
+
+	Gizmos::addSphere(m_myGameObject.position,
+		1.0f, 32, 32, m_myGameObject.colour);
+
 }
 
 void Client::draw() {
@@ -139,9 +156,20 @@ void Client::handleNetworkMessages()
 			std::cout << str.C_String() << std::endl;
 			break;
 		}
+		case ID_SERVER_SET_CLIENT_ID:
+			onSetClientIDPacket(packet);
+			break;
 		default:
 			std::cout << "Received a message with a unknown id: " << packet->data[0];
 			break;
 		}
 	}
+}
+
+void Client::onSetClientIDPacket(RakNet::Packet* packet)
+{
+	RakNet::BitStream bsIn(packet->data, packet->length, false);
+	bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+	bsIn.Read(m_myClientID);
+	std::cout << "Set my client ID to: " << m_myClientID << std::endl;
 }

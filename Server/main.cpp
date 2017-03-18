@@ -10,6 +10,19 @@
 const unsigned short PORT = 5456;
 RakNet::RakPeerInterface* pPeerInterface = nullptr;
 
+int nextClientID = 1;
+
+void sendNewClientID(RakNet::RakPeerInterface* pPeerInterface,
+	RakNet::SystemAddress& address)
+{
+	RakNet::BitStream bs;
+	bs.Write((RakNet::MessageID)GameMessages::ID_SERVER_SET_CLIENT_ID);
+	bs.Write(nextClientID);
+	nextClientID++;
+	pPeerInterface->Send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED,
+		0, address, false);
+}
+
 void handleNetworkMessages()
 {
 	RakNet::Packet* packet = nullptr;
@@ -23,6 +36,7 @@ void handleNetworkMessages()
 			{
 			case ID_NEW_INCOMING_CONNECTION:
 				std::cout << "A connection is incoming.\n";
+				sendNewClientID(pPeerInterface, packet->systemAddress);
 				break;
 			case ID_DISCONNECTION_NOTIFICATION:
 				std::cout << "A client has disconnected.\n";
@@ -64,7 +78,9 @@ int main()
 	pPeerInterface->Startup(32, &sd, 1);
 	pPeerInterface->SetMaximumIncomingConnections(32);
 
-	sendClientPing(pPeerInterface);
+	//Startup a thread to ping clients every second
+	std::thread pingThread(sendClientPing, pPeerInterface);
+
 	handleNetworkMessages();
 
 	
