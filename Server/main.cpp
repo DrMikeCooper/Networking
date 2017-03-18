@@ -44,6 +44,13 @@ void handleNetworkMessages()
 			case ID_CONNECTION_LOST:
 				std::cout << "A client lost the connection.\n";
 				break;
+			case ID_CLIENT_CLIENT_DATA :
+				{
+					RakNet::BitStream bs(packet->data, packet->length, false);
+					pPeerInterface->Send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+						packet->systemAddress, true);
+					break;
+				}
 			default:
 				std::cout << "Received a message with a unknown id: " <<
 					packet->data[0];

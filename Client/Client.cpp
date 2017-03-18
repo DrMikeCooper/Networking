@@ -69,14 +69,22 @@ void Client::update(float deltaTime) {
 	if (input->isKeyDown(aie::INPUT_KEY_LEFT))
 	{
 		m_myGameObject.position.x -= 10.0f * deltaTime;
+		sendClientGameObject();
 	}
 	if (input->isKeyDown(aie::INPUT_KEY_RIGHT))
 	{
 		m_myGameObject.position.x += 10.0f * deltaTime;
+		sendClientGameObject();
 	}
 
 	Gizmos::addSphere(m_myGameObject.position,
 		1.0f, 32, 32, m_myGameObject.colour);
+
+	for (auto& otherClient : m_otherClientGameObjects)
+	{
+		Gizmos::addSphere(otherClient.second.position,
+			1.0f, 32, 32, otherClient.second.colour);
+	}
 
 }
 
@@ -159,6 +167,9 @@ void Client::handleNetworkMessages()
 		case ID_SERVER_SET_CLIENT_ID:
 			onSetClientIDPacket(packet);
 			break;
+		case ID_CLIENT_CLIENT_DATA:
+			onReceivedClientDataPacket(packet);
+			break;
 		default:
 			std::cout << "Received a message with a unknown id: " << packet->data[0];
 			break;
@@ -172,4 +183,37 @@ void Client::onSetClientIDPacket(RakNet::Packet* packet)
 	bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
 	bsIn.Read(m_myClientID);
 	std::cout << "Set my client ID to: " << m_myClientID << std::endl;
+}
+
+void Client::sendClientGameObject()
+{
+	RakNet::BitStream bs;
+	bs.Write((RakNet::MessageID)GameMessages::ID_CLIENT_CLIENT_DATA);
+	bs.Write(m_myClientID);
+	bs.Write((char*)&m_myGameObject, sizeof(GameObject));
+	m_pPeerInterface->Send(&bs, HIGH_PRIORITY, RELIABLE_ORDERED, 0,
+		RakNet::UNASSIGNED_SYSTEM_ADDRESS, true);
+}
+
+void Client::onReceivedClientDataPacket(RakNet::Packet * packet)
+{
+	RakNet::BitStream bsIn(packet->data, packet->length, false);
+	bsIn.IgnoreBytes(sizeof(RakNet::MessageID));
+	int clientID;
+	bsIn.Read(clientID);
+	//If the clientID does not match our ID, we need to update
+	//our client GameObject information.
+	if (clientID != m_myClientID)
+	{
+		GameObject clientData;
+		bsIn.Read((char*)&clientData, sizeof(GameObject));
+
+		m_otherClientGameObjects[clientID] = clientData;
+
+		//For now, just output the Game Object information to the
+		//console
+		std::cout << "Client " << clientID <<
+			" at: " << clientData.position.x <<
+			" " << clientData.position.z << std::endl;
+	}
 }

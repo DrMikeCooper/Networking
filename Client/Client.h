@@ -3,6 +3,7 @@
 #include "Application.h"
 #include <glm/glm.hpp>
 #include <RakPeerInterface.h>
+#include <unordered_map>
 
 struct GameObject
 {
@@ -29,6 +30,9 @@ public:
 	void handleNetworkMessages();
 
 	void onSetClientIDPacket(RakNet::Packet* packet);
+	void sendClientGameObject();
+	void onReceivedClientDataPacket(RakNet::Packet * packet);
+
 protected:
 
 	RakNet::RakPeerInterface* m_pPeerInterface;
@@ -37,6 +41,8 @@ protected:
 
 	GameObject m_myGameObject;
 	int m_myClientID;
+
+	std::unordered_map<int, GameObject> m_otherClientGameObjects;
 
 	glm::mat4	m_viewMatrix;
 	glm::mat4	m_projectionMatrix;
